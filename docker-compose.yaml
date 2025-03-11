@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cookiecutter
+    environment:
+      - PYTHONUNBUFFERED=1  # Optional: Ensures Python output is not buffered
+    command: poetry run pytest tests/  # Run tests by default (customize as needed)
