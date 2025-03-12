@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "cookiecutter"
+version = "0.1.0"
+description = "a focuskpi cookiecutter project"
+authors = ["Hao Zhang"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pandas = "^2.2.3"
+msal = "^1.31.1"
+streamlit = "^1.43.1"
+dotenv = "^0.9.9"
+requests = "^2.32.3"
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.1.1"
+ipykernel = "^6.29.5"
+pytest = "^8.3.3"
+flake8 = "^7.1.1"
+isort = "^5.13.2"
+pandas = "^2.2.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+exclude = ["__pycache__", "build", "dist", "src/__init__.py"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+include_trailing_comma = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
