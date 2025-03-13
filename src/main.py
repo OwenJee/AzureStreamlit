@@ -97,7 +97,7 @@ def get_token_from_code(auth_code):
     return result
 
 
-def save_refresh_token(email, refresh_token, expires_at):
+def save_refresh_token_to_db(email, refresh_token, expires_at):
     """Save refresh token in the database."""
     encrypted_refresh_token = cipher_suite.encrypt(refresh_token.encode())
     conn = sqlite3.connect("user_sessions.db")
@@ -110,7 +110,7 @@ def save_refresh_token(email, refresh_token, expires_at):
     conn.close()
 
 
-def get_refresh_token(email):
+def get_refresh_token_from_db(email):
     """Retrieve refresh token from the database."""
     conn = sqlite3.connect("user_sessions.db")
     cursor = conn.cursor()
@@ -120,32 +120,41 @@ def get_refresh_token(email):
     )
     token_data = cursor.fetchone()
     conn.close()
+
     if token_data:
         refresh_token = cipher_suite.decrypt(token_data[0]).decode()
         expires_at = token_data[1]
         return refresh_token, expires_at
+
     return None, None
 
 
 def refresh_token():
     """Refresh the access token using the refresh token."""
     email = st.session_state["user"]["email"]
-    refresh_token, expires_at = get_refresh_token(email)
-    if refresh_token and datetime.now() < datetime.fromisoformat(expires_at):
-        result = msal_app.acquire_token_by_refresh_token(
-            refresh_token, scopes=["User.Read"]
-        )
-        if "access_token" in result:
-            st.session_state["user"]["token"] = result["access_token"]
-            new_expires_at = (
-                datetime.now() + timedelta(seconds=result["expires_in"])).isoformat()
-            save_refresh_token(
-                email, result["refresh_token"], new_expires_at)
-        else:
-            st.error("Failed to refresh token. Please log in again.")
-            logout(st.session_state["session_id"])
+
+    # First, try acquiring a token silently
+    accounts = msal_app.get_accounts()
+    account = accounts[0] if accounts else None
+    result = msal_app.acquire_token_silent(["User.Read"], account)
+
+    if not result:
+        # If no valid token exists, use the refresh token
+        refresh_token, expires_at = get_refresh_token_from_db(email)
+
+        if refresh_token and datetime.now() < datetime.fromisoformat(expires_at):
+            result = msal_app.acquire_token_by_refresh_token(
+                refresh_token, scopes=["User.Read"]
+            )
+
+    if result and "access_token" in result:
+        st.session_state["user"]["token"] = result["access_token"]
+        new_expires_at = (
+            datetime.now() + timedelta(seconds=result["expires_in"])).isoformat()
+        save_refresh_token_to_db(
+            email, result.get("refresh_token", refresh_token), new_expires_at)
     else:
-        st.error("Refresh token expired. Please log in again.")
+        st.error("Failed to refresh token. Please log in again.")
         logout(st.session_state["session_id"])
 
 
@@ -189,12 +198,15 @@ def handle_auth_code(auth_code):
                 "email": user_info["mail"] or user_info["userPrincipalName"],
                 "token": token_response["access_token"],
             }
+
             save_session(st.session_state["session_id"],
                          st.session_state["user"]["email"])
+
             expires_at = (
                 datetime.now() + timedelta(seconds=token_response["expires_in"])).isoformat()
-            save_refresh_token(
+            save_refresh_token_to_db(
                 st.session_state["user"]["email"], token_response["refresh_token"], expires_at)
+
             st.query_params.clear()
             st.rerun()
     else:
