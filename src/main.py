@@ -8,16 +8,22 @@ import sqlite3
 from datetime import datetime, timedelta
 import uuid
 from cryptography.fernet import Fernet
+import yaml
 
 # Load environment variables from .env file
 load_dotenv()
-CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-TENANT_ID = os.getenv("TENANT_ID")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY").encode()
 
+with open("/workspaces/AzureStreamlit/config.yaml", "r") as config_file:
+    config = yaml.safe_load(config_file)
+
+CLIENT_ID = config["CLIENT_ID"]
+TENANT_ID = config["TENANT_ID"]
+REDIRECT_URI = config["REDIRECT_URI"]
+
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
-REDIRECT_URI = "http://localhost:8501"
+
 
 # Setting cache manually since Streamlit refreshes and resets cache in msal_app
 cache = SerializableTokenCache()
